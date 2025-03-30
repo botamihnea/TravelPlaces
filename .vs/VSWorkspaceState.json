@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\.next",
+    "\\.next\\build",
+    "\\.next\\static",
+    "\\.next\\static\\development",
+    "\\src"
+  ],
+  "PreviewInSolutionExplorer": false
+}
