@@ -6,13 +6,13 @@ import { usePlaces } from '../contexts/PlacesContext';
 import PlaceCharts from './PlaceCharts';
 
 interface PlaceListProps {
-  places: Place[];
-}
+    places: Place[];
+  }
 
 const ITEMS_PER_PAGE = 5;
 
 export default function PlaceList({ places }: PlaceListProps) {
-  const { deletePlace } = usePlaces();
+  const { deletePlace, isAutoRefreshing, toggleAutoRefresh, isOffline } = usePlaces();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'location'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -40,7 +40,7 @@ export default function PlaceList({ places }: PlaceListProps) {
       place.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       place.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
-    
+
     // Then sort
     return [...filtered].sort((a, b) => {
       let comparison = 0;
@@ -81,52 +81,61 @@ export default function PlaceList({ places }: PlaceListProps) {
     return <p className="text-center py-4">No places found. Add some places to get started!</p>;
   }
 
-  return (
+    return (
     <div className="w-full">
-      <PlaceCharts places={places} />
-
-      {statistics && (
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg">
-          <h3 className="text-xl font-semibold mb-3">Statistics</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-3 bg-blue-50 rounded-md">
-              <p className="text-sm text-gray-600">Highest Rating</p>
-              <p className="font-medium">{statistics.mostExpensive.name} ({statistics.mostExpensive.rating}★)</p>
+      {isOffline && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
             </div>
-            <div className="p-3 bg-yellow-50 rounded-md">
-              <p className="text-sm text-gray-600">Average Rating</p>
-              <p className="font-medium">{statistics.average}★</p>
-            </div>
-            <div className="p-3 bg-red-50 rounded-md">
-              <p className="text-sm text-gray-600">Lowest Rating</p>
-              <p className="font-medium">{statistics.leastExpensive.name} ({statistics.leastExpensive.rating}★)</p>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                You are currently offline. Changes will be synced when you're back online.
+              </p>
             </div>
           </div>
         </div>
       )}
 
-      <div className="mb-6 flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Search places..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="p-2 border rounded w-64 text-lg"
-        />
-        <select 
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'name' | 'rating' | 'location')}
-          className="p-2 border rounded text-lg"
+      <PlaceCharts places={places} />
+
+      <div className="flex justify-between items-center mb-6">
+        <div className="flex space-x-4">
+          <input
+            type="text"
+            placeholder="Search places..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="p-2 border rounded w-64 text-lg"
+          />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as 'name' | 'rating' | 'location')}
+            className="p-2 border rounded text-lg"
+          >
+            <option value="name">Name</option>
+            <option value="location">Location</option>
+            <option value="rating">Rating</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="p-2 border rounded w-10 text-lg"
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </button>
+        </div>
+        <button
+          onClick={toggleAutoRefresh}
+          className={`px-4 py-2 rounded text-white ${
+            isAutoRefreshing 
+              ? 'bg-red-500 hover:bg-red-600' 
+              : 'bg-green-500 hover:bg-green-600'
+          }`}
         >
-          <option value="name">Name</option>
-          <option value="location">Location</option>
-          <option value="rating">Rating</option>
-        </select>
-        <button 
-          onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-          className="p-2 border rounded w-10 text-lg"
-        >
-          {sortOrder === 'asc' ? '↑' : '↓'}
+          {isAutoRefreshing ? 'Stop Auto-Refresh' : 'Start Auto-Refresh'}
         </button>
       </div>
 
@@ -190,33 +199,22 @@ export default function PlaceList({ places }: PlaceListProps) {
             ))}
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="mt-8 flex justify-center gap-2">
+            <div className="mt-8 flex justify-center space-x-2">
               <button
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border rounded disabled:opacity-50"
               >
                 Previous
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-4 py-2 border rounded ${
-                    currentPage === page
-                      ? 'bg-blue-500 text-white'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              <span className="px-4 py-2">
+                Page {currentPage} of {totalPages}
+              </span>
               <button
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 border rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 border rounded disabled:opacity-50"
               >
                 Next
               </button>
@@ -225,5 +223,5 @@ export default function PlaceList({ places }: PlaceListProps) {
         </>
       )}
     </div>
-  );
+    );
 }

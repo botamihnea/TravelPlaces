@@ -74,18 +74,22 @@ export default function EditPlaceForm({ id }: EditPlaceFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (validateForm()) {
-      updatePlace(id, {
-        name,
-        location,
-        rating,
-        description
-      });
-      
-      router.push('/');
+      try {
+        await updatePlace(id, {
+          name,
+          location,
+          rating,
+          description
+        });
+        
+        router.push('/');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to update place');
+      }
     }
   };
 
