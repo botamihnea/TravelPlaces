@@ -2,11 +2,12 @@
 'use client'; // Mark as a Client Component
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Place } from '../types/place'; // Import the Place interface
+import { websocketService } from '../services/websocket';
 
 interface PlacesContextType {
   places: Place[];
   addPlace: (place: Omit<Place, 'id'>) => Promise<void>;
-  updatePlace: (id: number, updatedPlace: Omit<Place, 'id'>) => Promise<void>;
+  updatePlace: (id: number, place: Omit<Place, 'id'>) => Promise<void>;
   deletePlace: (id: number) => Promise<void>;
   getPlaceById: (id: number) => Place | undefined;
   loading: boolean;
@@ -15,11 +16,12 @@ interface PlacesContextType {
   toggleAutoRefresh: () => void;
   isOffline: boolean;
   pendingOperations: any[];
+  uploadFile: (file: File) => Promise<string>;
 }
 
 const PlacesContext = createContext<PlacesContextType | undefined>(undefined);
 
-export const PlacesProvider = ({ children }: { children: ReactNode }) => {
+export function PlacesProvider({ children }: { children: ReactNode }) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +29,29 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
   const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [isOffline, setIsOffline] = useState(false);
   const [pendingOperations, setPendingOperations] = useState<any[]>([]);
+
+  const loadFromLocalStorage = () => {
+    const storedPlaces = localStorage.getItem('places');
+    if (storedPlaces) {
+      setPlaces(JSON.parse(storedPlaces));
+    }
+  };
+
+  const fetchPlaces = async () => {
+    try {
+      const response = await fetch('/api/places');
+      if (!response.ok) throw new Error('Failed to fetch places');
+      const data = await response.json();
+      setPlaces(data);
+      localStorage.setItem('places', JSON.stringify(data));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      loadFromLocalStorage();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Network status detection
   useEffect(() => {
@@ -49,31 +74,28 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
+  // WebSocket setup
+  useEffect(() => {
+    // Initial fetch of places
+    fetchPlaces();
+
+    // Set up WebSocket event listener
+    const handleWebSocketMessage = (event: CustomEvent) => {
+      if (event.detail?.type === 'update') {
+        fetchPlaces();
+      }
+    };
+
+    window.addEventListener('websocket-message', handleWebSocketMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('websocket-message', handleWebSocketMessage as EventListener);
+      websocketService?.close();
+    };
+  }, []);
+
   // Load places from local storage on mount
   useEffect(() => {
-    const loadFromLocalStorage = () => {
-      const storedPlaces = localStorage.getItem('places');
-      if (storedPlaces) {
-        setPlaces(JSON.parse(storedPlaces));
-      }
-    };
-
-    const fetchPlaces = async () => {
-      try {
-        const response = await fetch('/api/places');
-        if (!response.ok) throw new Error('Failed to fetch places');
-        const data = await response.json();
-        setPlaces(data);
-        localStorage.setItem('places', JSON.stringify(data));
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        loadFromLocalStorage();
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPlaces();
     return () => {
       if (refreshInterval) {
@@ -128,6 +150,28 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const uploadFile = async (file: File): Promise<string> => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
   const addPlace = async (place: Omit<Place, 'id'>) => {
     try {
       if (isOffline) {
@@ -153,6 +197,9 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
 
       const newPlace = await response.json();
       setPlaces(prev => [...prev, newPlace]);
+      
+      // Notify other clients through WebSocket
+      websocketService?.send({ type: 'update', action: 'add' });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add place');
@@ -183,6 +230,9 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
 
       const updatedPlace = await response.json();
       setPlaces(prev => prev.map(p => p.id === id ? updatedPlace : p));
+      
+      // Notify other clients through WebSocket
+      websocketService?.send({ type: 'update', action: 'update' });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update place');
@@ -208,6 +258,9 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
       }
 
       setPlaces(prev => prev.filter(p => p.id !== id));
+      
+      // Notify other clients through WebSocket
+      websocketService?.send({ type: 'update', action: 'delete' });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete place');
@@ -235,6 +288,10 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
         if (placeToUpdate) {
           placeToUpdate.rating = randomRating;
           setPlaces(updatedPlaces);
+          websocketService?.send({ 
+            type: 'update', 
+            data: placeToUpdate 
+          });
         }
       }, 3000);
       
@@ -256,18 +313,19 @@ export const PlacesProvider = ({ children }: { children: ReactNode }) => {
         isAutoRefreshing,
         toggleAutoRefresh,
         isOffline,
-        pendingOperations
+        pendingOperations,
+        uploadFile
       }}
     >
       {children}
     </PlacesContext.Provider>
   );
-};
+}
 
-export const usePlaces = () => {
+export function usePlaces() {
   const context = useContext(PlacesContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('usePlaces must be used within a PlacesProvider');
   }
   return context;
-};
+}

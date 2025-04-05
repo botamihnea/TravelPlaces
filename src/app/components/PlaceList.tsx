@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { Place } from '../types/place';
 import { usePlaces } from '../contexts/PlacesContext';
 import PlaceCharts from './PlaceCharts';
+import StarRating from './StarRating';
 
 interface PlaceListProps {
     places: Place[];
@@ -12,11 +13,12 @@ interface PlaceListProps {
 const ITEMS_PER_PAGE = 5;
 
 export default function PlaceList({ places }: PlaceListProps) {
-  const { deletePlace, isAutoRefreshing, toggleAutoRefresh, isOffline } = usePlaces();
+  const { deletePlace, isAutoRefreshing, toggleAutoRefresh, isOffline, updatePlace } = usePlaces();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'location'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedPlace, setSelectedPlace] = useState<number | null>(null);
 
   // Calculate statistics
   const statistics = useMemo(() => {
@@ -75,6 +77,20 @@ export default function PlaceList({ places }: PlaceListProps) {
       return "bg-yellow-50 border-yellow-200";
     }
     return "bg-white border-gray-200";
+  };
+
+  const handleDelete = async (id: number) => {
+    if (window.confirm('Are you sure you want to delete this place?')) {
+      await deletePlace(id);
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const toggleMediaPreview = (placeId: number) => {
+    setSelectedPlace(selectedPlace === placeId ? null : placeId);
   };
 
   if (places.length === 0) {
@@ -189,12 +205,34 @@ export default function PlaceList({ places }: PlaceListProps) {
                     Edit
                   </Link>
                   <button 
-                    onClick={() => deletePlace(place.id)}
+                    onClick={() => handleDelete(place.id)}
                     className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
                   >
                     Delete
                   </button>
                 </div>
+                {place.videoUrl && (
+                  <div>
+                    <button
+                      onClick={() => toggleMediaPreview(place.id)}
+                      className="text-blue-500 hover:text-blue-600 flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm12.553 1.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                      </svg>
+                      {selectedPlace === place.id ? 'Hide Video' : 'Show Video'}
+                    </button>
+                    {selectedPlace === place.id && (
+                      <div className="mt-2">
+                        <video
+                          src={place.videoUrl}
+                          controls
+                          className="w-full max-h-48 object-contain rounded"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -202,7 +240,7 @@ export default function PlaceList({ places }: PlaceListProps) {
           {totalPages > 1 && (
             <div className="mt-8 flex justify-center space-x-2">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="px-4 py-2 border rounded disabled:opacity-50"
               >
@@ -212,7 +250,7 @@ export default function PlaceList({ places }: PlaceListProps) {
                 Page {currentPage} of {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="px-4 py-2 border rounded disabled:opacity-50"
               >

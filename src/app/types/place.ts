@@ -4,4 +4,5 @@ export interface Place {
     location: string;
     rating: number;
     description: string;
+    videoUrl?: string;
   }

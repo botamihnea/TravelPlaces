@@ -4,12 +4,14 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePlaces } from '../contexts/PlacesContext'; // Import the usePlaces hook
 import StarRating from './StarRating';
+import FileUpload from './FileUpload';
 
 export default function AddPlaceForm() {
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
   const [rating, setRating] = useState(0);
   const [description, setDescription] = useState('');
+  const [videoUrl, setVideoUrl] = useState('');
   const [errors, setErrors] = useState<{
     name?: string;
     location?: string;
@@ -54,18 +56,45 @@ export default function AddPlaceForm() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleFileUpload = async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      setVideoUrl(data.url);
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw error;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (validateForm()) {
-      addPlace({
-        name,
-        location,
-        rating,
-        description
-      });
-      
-      router.push('/');
+      try {
+        await addPlace({
+          name,
+          location,
+          rating,
+          description,
+          videoUrl
+        });
+        
+        router.push('/');
+      } catch (error) {
+        console.error('Failed to add place:', error);
+      }
     }
   };
 
@@ -82,7 +111,7 @@ export default function AddPlaceForm() {
           />
           {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
-        
+
         <div>
           <label className="block mb-1">Location</label>
           <input
@@ -93,13 +122,13 @@ export default function AddPlaceForm() {
           />
           {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
         </div>
-        
+
         <div>
           <label className="block mb-1">Rating</label>
           <StarRating initialRating={rating} onChange={setRating} />
           {errors.rating && <p className="text-red-500 text-sm mt-1">{errors.rating}</p>}
         </div>
-        
+
         <div>
           <label className="block mb-1">Description</label>
           <textarea
@@ -110,7 +139,21 @@ export default function AddPlaceForm() {
           />
           {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
         </div>
-        
+
+        <div>
+          <label className="block mb-1">Upload Video (Optional)</label>
+          <FileUpload onUpload={handleFileUpload} />
+          {videoUrl && (
+            <div className="mt-2">
+              <video 
+                src={videoUrl} 
+                controls 
+                className="w-full max-h-64 object-contain"
+              />
+            </div>
+          )}
+        </div>
+
         <button
           type="submit"
           className="w-full bg-black text-white py-2 rounded"
