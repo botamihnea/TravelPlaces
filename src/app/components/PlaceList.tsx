@@ -13,7 +13,7 @@ interface PlaceListProps {
 const ITEMS_PER_PAGE = 5;
 
 export default function PlaceList({ places }: PlaceListProps) {
-  const { deletePlace, isAutoRefreshing, toggleAutoRefresh, isOffline, updatePlace } = usePlaces();
+  const { deletePlace, autoRefreshEnabled, toggleAutoRefresh, isOffline, updatePlace } = usePlaces();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'rating' | 'location'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -146,12 +146,12 @@ export default function PlaceList({ places }: PlaceListProps) {
         <button
           onClick={toggleAutoRefresh}
           className={`px-4 py-2 rounded text-white ${
-            isAutoRefreshing 
+            autoRefreshEnabled 
               ? 'bg-red-500 hover:bg-red-600' 
               : 'bg-green-500 hover:bg-green-600'
           }`}
         >
-          {isAutoRefreshing ? 'Stop Auto-Refresh' : 'Start Auto-Refresh'}
+          {autoRefreshEnabled ? 'Stop Auto-Refresh' : 'Start Auto-Refresh'}
         </button>
       </div>
 
@@ -189,7 +189,7 @@ export default function PlaceList({ places }: PlaceListProps) {
                 <div className="flex items-center mb-3">
                   <div className="flex text-yellow-500 text-xl">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <span key={star} className={star <= place.rating ? 'text-yellow-500' : 'text-gray-300'}>
+                      <span key={`${place.id}-star-${star}`} className={star <= place.rating ? 'text-yellow-500' : 'text-gray-300'}>
                         ★
                       </span>
                     ))}

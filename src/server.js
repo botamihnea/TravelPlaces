@@ -1,18 +1,20 @@
-import { WebSocketServer } from 'ws';
-import { NextResponse } from 'next/server';
-import { placesStore } from '../../lib/placesStore';
+const { WebSocketServer } = require('ws');
+const http = require('http');
 
-// Initialize WebSocket server
-const wss = new WebSocketServer({ port: 8080 });
+// Create HTTP server
+const server = http.createServer();
+
+// Create WebSocket server
+const wss = new WebSocketServer({ server });
 
 // Global state for auto-refresh
 let isAutoRefreshEnabled = false;
-let updateInterval: NodeJS.Timeout | null = null;
+let updateInterval = null;
 
 // Function to send update to all connected clients
-function broadcastUpdate(data: any) {
+function broadcastUpdate(data) {
   wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === 1) { // WebSocket.OPEN
       try {
         client.send(JSON.stringify(data));
       } catch (error) {
@@ -31,8 +33,6 @@ function startAutoRefresh() {
     if (!isAutoRefreshEnabled || wss.clients.size === 0) return;
 
     try {
-      const places = placesStore.getAllPlaces();
-      
       // Randomly decide whether to add a new place or update existing
       const shouldAddNew = Math.random() < 0.3; // 30% chance to add new place
 
@@ -44,28 +44,27 @@ function startAutoRefresh() {
           location: `Location ${Math.floor(Math.random() * 100)}`,
           description: `This is an automatically generated place ${counter}`,
           rating: Math.floor(Math.random() * 5) + 1,
-          videoUrl: null
+          videoUrl: undefined
         };
 
-        // Add to store and broadcast
-        placesStore.addPlace(newPlace);
+        // Broadcast the new place
         broadcastUpdate({
           type: 'update',
           action: 'add',
           data: newPlace
         });
-      } else if (places.length > 0) {
-        // Update an existing place
-        const randomIndex = Math.floor(Math.random() * places.length);
-        const place = places[randomIndex];
+      } else {
+        // Generate an update event
         const updatedPlace = {
-          ...place,
+          id: Date.now() - Math.floor(Math.random() * 1000),
+          name: `Updated Place`,
+          location: `Updated Location ${Math.floor(Math.random() * 100)}`,
+          description: `This is an updated place`,
           rating: Math.floor(Math.random() * 5) + 1,
-          location: `Updated Location ${Math.floor(Math.random() * 100)}`
+          videoUrl: undefined
         };
 
-        // Update store and broadcast
-        placesStore.updatePlace(place.id, updatedPlace);
+        // Broadcast the update
         broadcastUpdate({
           type: 'update',
           action: 'refresh',
@@ -97,14 +96,18 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
+      console.log('Received message:', data);
       
       if (data.type === 'toggle-auto-refresh') {
         isAutoRefreshEnabled = data.enabled;
+        console.log('Auto-refresh toggled:', isAutoRefreshEnabled);
+        
         if (isAutoRefreshEnabled) {
           startAutoRefresh();
         } else {
           stopAutoRefresh();
         }
+        
         // Broadcast auto-refresh status to all clients
         broadcastUpdate({
           type: 'auto-refresh-status',
@@ -125,7 +128,8 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Export dummy handler for Next.js (required for API routes)
-export async function GET() {
-  return new NextResponse('WebSocket server running', { status: 200 });
-} 
+// Start server
+const PORT = process.env.WS_PORT || 8080;
+server.listen(PORT, () => {
+  console.log(`WebSocket server is running on port ${PORT}`);
+}); 

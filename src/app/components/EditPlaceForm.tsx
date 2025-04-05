@@ -11,19 +11,12 @@ interface EditPlaceFormProps {
 export default function EditPlaceForm({ id }: EditPlaceFormProps) {
   const [name, setName] = useState('');
   const [location, setLocation] = useState('');
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(1);
   const [description, setDescription] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [errors, setErrors] = useState<{
-    name?: string;
-    location?: string;
-    rating?: string;
-    description?: string;
-  }>({});
-  
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { getPlaceById, updatePlace } = usePlaces();
+
+  const { updatePlace, getPlaceById } = usePlaces();
 
   useEffect(() => {
     // Load place data
@@ -32,46 +25,25 @@ export default function EditPlaceForm({ id }: EditPlaceFormProps) {
       setName(place.name);
       setLocation(place.location);
       setRating(place.rating);
-      setDescription(place.description);
-      setLoading(false);
-    } else {
-      setError('Place not found');
-      setLoading(false);
+      setDescription(place.description || '');
     }
   }, [id, getPlaceById]);
 
   const validateForm = () => {
-    const newErrors: {
-      name?: string;
-      location?: string;
-      rating?: string;
-      description?: string;
-    } = {};
-    
-    // Validate name
     if (!name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (name.length > 50) {
-      newErrors.name = 'Name must be less than 50 characters';
+      setError('Name is required');
+      return false;
     }
-    
-    // Validate location
     if (!location.trim()) {
-      newErrors.location = 'Location is required';
+      setError('Location is required');
+      return false;
     }
-    
-    // Validate rating
-    if (rating === 0) {
-      newErrors.rating = 'Rating is required';
+    if (rating < 1 || rating > 5) {
+      setError('Rating must be between 1 and 5');
+      return false;
     }
-    
-    // Validate description
-    if (!description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setError(null);
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -93,66 +65,52 @@ export default function EditPlaceForm({ id }: EditPlaceFormProps) {
     }
   };
 
-  if (loading) {
-    return <div className="text-center py-4">Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-4">
-        <p className="text-red-500">{error}</p>
-        <button 
-          onClick={() => router.push('/')}
-          className="mt-4 text-blue-600 hover:underline"
-        >
-          Go back home
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="max-w-2xl mx-auto p-4">
+      <h1 className="text-3xl font-bold mb-6">Edit Place</h1>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
           <label className="block mb-1">Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className={`w-full p-2 border rounded ${errors.name ? 'border-red-500' : ''}`}
+            className="w-full p-2 border rounded"
           />
-          {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
         </div>
-        
         <div>
           <label className="block mb-1">Location</label>
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className={`w-full p-2 border rounded ${errors.location ? 'border-red-500' : ''}`}
+            className="w-full p-2 border rounded"
           />
-          {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
         </div>
-        
         <div>
           <label className="block mb-1">Rating</label>
-          <StarRating initialRating={rating} onChange={setRating} />
-          {errors.rating && <p className="text-red-500 text-sm mt-1">{errors.rating}</p>}
+          <input
+            type="number"
+            min="1"
+            max="5"
+            value={rating}
+            onChange={(e) => setRating(Number(e.target.value))}
+            className="w-full p-2 border rounded"
+          />
         </div>
-        
         <div>
           <label className="block mb-1">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className={`w-full p-2 border rounded ${errors.description ? 'border-red-500' : ''}`}
-            rows={4}
+            className="w-full p-2 border rounded h-32"
           />
-          {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
         </div>
-        
         <button
           type="submit"
           className="w-full bg-black text-white py-2 rounded"
