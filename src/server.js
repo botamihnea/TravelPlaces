@@ -114,6 +114,33 @@ wss.on('connection', (ws) => {
           enabled: isAutoRefreshEnabled
         });
       }
+      else if (data.type === 'update') {
+        // Handle add, delete, and update operations
+        if (data.action === 'add') {
+          console.log('Broadcasting new place:', data.data);
+          broadcastUpdate({
+            type: 'update',
+            action: 'add',
+            data: data.data
+          });
+        }
+        else if (data.action === 'delete') {
+          console.log('Broadcasting place deletion:', data.id);
+          broadcastUpdate({
+            type: 'update',
+            action: 'delete',
+            id: data.id
+          });
+        }
+        else if (data.action === 'refresh') {
+          console.log('Broadcasting place update:', data.data);
+          broadcastUpdate({
+            type: 'update',
+            action: 'refresh',
+            data: data.data
+          });
+        }
+      }
     } catch (error) {
       console.error('Error handling message:', error);
     }

@@ -44,7 +44,7 @@ function startAutoRefresh() {
           location: `Location ${Math.floor(Math.random() * 100)}`,
           description: `This is an automatically generated place ${counter}`,
           rating: Math.floor(Math.random() * 5) + 1,
-          videoUrl: null
+          videoUrl: ""
         };
 
         // Add to store and broadcast
@@ -97,6 +97,7 @@ wss.on('connection', (ws) => {
   ws.on('message', (message) => {
     try {
       const data = JSON.parse(message.toString());
+      console.log('Received WebSocket message:', data);
       
       if (data.type === 'toggle-auto-refresh') {
         isAutoRefreshEnabled = data.enabled;
@@ -110,6 +111,35 @@ wss.on('connection', (ws) => {
           type: 'auto-refresh-status',
           enabled: isAutoRefreshEnabled
         });
+      }
+      else if (data.type === 'update') {
+        if (data.action === 'add') {
+          console.log('Broadcasting new place:', data.data);
+          placesStore.addPlace(data.data);
+          broadcastUpdate({
+            type: 'update',
+            action: 'add',
+            data: data.data
+          });
+        }
+        else if (data.action === 'delete') {
+          console.log('Broadcasting place deletion:', data.id);
+          placesStore.deletePlace(data.id);
+          broadcastUpdate({
+            type: 'update',
+            action: 'delete',
+            id: data.id
+          });
+        }
+        else if (data.action === 'refresh') {
+          console.log('Broadcasting place update:', data.data); 
+          placesStore.updatePlace(data.data.id, data.data);
+          broadcastUpdate({
+            type: 'update',
+            action: 'refresh',
+            data: data.data
+          });
+        }
       }
     } catch (error) {
       console.error('Error handling message:', error);
