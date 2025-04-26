@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Place } from '../../../types/place';
-import { places, debugPlaces, getPlaceById, updatePlace as updatePlaceStore, deletePlace as deletePlaceStore } from '../../../lib/placesStore';
+import { placesDB } from '../../db';
 
 // CORS headers
 const corsHeaders = {
@@ -52,10 +52,7 @@ export async function GET(
     console.log(`GET request for id: ${idParam} (${typeof idParam})`);
     const id = parseInt(idParam);
     
-    // Debug the places store
-    debugPlaces('GET', id);
-    
-    const place = getPlaceById(id);
+    const place = await placesDB.getPlaceById(id);
 
     if (!place) {
       console.log(`Place with ID ${id} not found`);
@@ -87,11 +84,8 @@ export async function PUT(
     console.log(`PUT request for id: ${idParam} (${typeof idParam})`);
     const id = parseInt(idParam);
     
-    // Debug the places store before update
-    debugPlaces('UPDATE', id);
-    
     // Check if place exists
-    const existingPlace = getPlaceById(id);
+    const existingPlace = await placesDB.getPlaceById(id);
     if (!existingPlace) {
       console.log(`Place with ID ${id} not found for update`);
       return NextResponse.json(
@@ -110,24 +104,15 @@ export async function PUT(
       );
     }
 
-    const updatedPlace: Place = {
-      ...data,
-      id
-    };
-
-    // Update in the store
-    const success = updatePlaceStore(id, updatedPlace);
+    const updatedPlace = await placesDB.updatePlace(id, data);
     
-    if (!success) {
+    if (!updatedPlace) {
       console.log(`Failed to update place with ID ${id}`);
       return NextResponse.json(
         { error: 'Failed to update place' },
         { status: 500, headers: corsHeaders }
       );
     }
-    
-    // Debug after update
-    debugPlaces('AFTER UPDATE', id);
     
     return NextResponse.json(updatedPlace, { headers: corsHeaders });
   } catch (error) {
@@ -151,11 +136,8 @@ export async function DELETE(
     console.log(`DELETE request for id: ${idParam} (${typeof idParam})`);
     const id = parseInt(idParam);
     
-    // Debug the places store before delete
-    debugPlaces('DELETE', id);
-    
     // Check if place exists first
-    const existingPlace = getPlaceById(id);
+    const existingPlace = await placesDB.getPlaceById(id);
     if (!existingPlace) {
       console.log(`Place with ID ${id} not found for deletion`);
       return NextResponse.json(
@@ -164,8 +146,8 @@ export async function DELETE(
       );
     }
 
-    // Delete using the store
-    const success = deletePlaceStore(id);
+    // Delete using the database
+    const success = await placesDB.deletePlace(id);
     
     if (!success) {
       console.log(`Failed to delete place with ID ${id}`);
@@ -174,9 +156,6 @@ export async function DELETE(
         { status: 500, headers: corsHeaders }
       );
     }
-    
-    // Debug after delete
-    debugPlaces('AFTER DELETE');
     
     return NextResponse.json({ 
       message: 'Place deleted successfully',

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Place } from '../../types/place';
-import { places, getNextId, debugPlaces, addPlace } from '../../lib/placesStore';
 import { headers } from 'next/headers';
+import { placesDB } from '../db';
 
 // Helper function to validate place data
 function validatePlace(data: any): { isValid: boolean; errors: string[] } {
@@ -45,7 +45,16 @@ export async function OPTIONS() {
 
 // GET all places
 export async function GET() {
-  return NextResponse.json(places, { headers: corsHeaders });
+  try {
+    const places = await placesDB.getAllPlaces();
+    return NextResponse.json(places, { headers: corsHeaders });
+  } catch (error) {
+    console.error('Error fetching places from database:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch places' },
+      { status: 500, headers: corsHeaders }
+    );
+  }
 }
 
 // POST new place
@@ -60,15 +69,13 @@ export async function POST(request: Request) {
         { status: 400, headers: corsHeaders }
       );
     }
-
-    // Debug the places store before adding
-    debugPlaces('BEFORE ADD');
     
-    // Add to the places store and get the new place with generated ID
-    const newPlace = addPlace(data);
+    console.log('Adding new place to database:', data);
     
-    // Debug after adding
-    debugPlaces('AFTER ADD', newPlace.id);
+    // Add to the database
+    const newPlace = await placesDB.addPlace(data);
+    
+    console.log('New place added with ID:', newPlace.id);
     
     return NextResponse.json(newPlace, { headers: corsHeaders });
   } catch (error) {
