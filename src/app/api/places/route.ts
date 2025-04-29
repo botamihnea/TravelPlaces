@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Place } from '../../types/place';
 import { headers } from 'next/headers';
-import { placesDB } from '../db';
+import { prisma } from '../../../lib/prisma';
 
 // Helper function to validate place data
 function validatePlace(data: any): { isValid: boolean; errors: string[] } {
@@ -43,10 +43,63 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// GET all places
-export async function GET() {
+// GET all places with filtering and sorting
+export async function GET(request: Request) {
   try {
-    const places = await placesDB.getAllPlaces();
+    const { searchParams } = new URL(request.url);
+    
+    // Extract filter parameters
+    const categoryId = searchParams.get('categoryId');
+    const minRating = searchParams.get('minRating');
+    const search = searchParams.get('search');
+    
+    // Extract sorting parameters
+    const sortBy = searchParams.get('sortBy') || 'name';
+    const sortOrder = searchParams.get('sortOrder') || 'asc';
+    
+    // Build where condition for filtering
+    const where: any = {};
+    
+    if (categoryId) {
+      where.categoryId = parseInt(categoryId);
+    }
+    
+    if (minRating) {
+      where.rating = {
+        gte: parseInt(minRating)
+      };
+    }
+    
+    if (search) {
+      where.OR = [
+        { name: { contains: search } },
+        { location: { contains: search } },
+        { description: { contains: search } }
+      ];
+    }
+    
+    // Build order by condition for sorting
+    const orderBy: any = {};
+    
+    if (['name', 'rating', 'location', 'createdAt'].includes(sortBy)) {
+      orderBy[sortBy] = sortOrder.toLowerCase() === 'desc' ? 'desc' : 'asc';
+    }
+    
+    // Query the database with filters, sorting and include related data
+    const places = await prisma.place.findMany({
+      where,
+      orderBy,
+      include: {
+        category: true,
+        reviews: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 3 // Include only 3 most recent reviews
+        }
+      }
+    });
+    
     return NextResponse.json(places, { headers: corsHeaders });
   } catch (error) {
     console.error('Error fetching places from database:', error);
@@ -72,8 +125,20 @@ export async function POST(request: Request) {
     
     console.log('Adding new place to database:', data);
     
-    // Add to the database
-    const newPlace = await placesDB.addPlace(data);
+    // Create the place in the database
+    const newPlace = await prisma.place.create({
+      data: {
+        name: data.name,
+        location: data.location,
+        rating: data.rating,
+        description: data.description,
+        videoUrl: data.videoUrl || null,
+        categoryId: data.categoryId || null
+      },
+      include: {
+        category: true
+      }
+    });
     
     console.log('New place added with ID:', newPlace.id);
     

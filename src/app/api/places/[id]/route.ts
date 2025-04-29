@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Place } from '../../../types/place';
-import { placesDB } from '../../db';
+import { prisma } from '../../../../lib/prisma';
 
 // CORS headers
 const corsHeaders = {
@@ -52,7 +52,17 @@ export async function GET(
     console.log(`GET request for id: ${idParam} (${typeof idParam})`);
     const id = parseInt(idParam);
     
-    const place = await placesDB.getPlaceById(id);
+    const place = await prisma.place.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        reviews: {
+          orderBy: {
+            createdAt: 'desc'
+          }
+        }
+      }
+    });
 
     if (!place) {
       console.log(`Place with ID ${id} not found`);
@@ -85,7 +95,10 @@ export async function PUT(
     const id = parseInt(idParam);
     
     // Check if place exists
-    const existingPlace = await placesDB.getPlaceById(id);
+    const existingPlace = await prisma.place.findUnique({
+      where: { id }
+    });
+    
     if (!existingPlace) {
       console.log(`Place with ID ${id} not found for update`);
       return NextResponse.json(
@@ -104,15 +117,26 @@ export async function PUT(
       );
     }
 
-    const updatedPlace = await placesDB.updatePlace(id, data);
-    
-    if (!updatedPlace) {
-      console.log(`Failed to update place with ID ${id}`);
-      return NextResponse.json(
-        { error: 'Failed to update place' },
-        { status: 500, headers: corsHeaders }
-      );
-    }
+    const updatedPlace = await prisma.place.update({
+      where: { id },
+      data: {
+        name: data.name,
+        location: data.location,
+        rating: data.rating,
+        description: data.description,
+        videoUrl: data.videoUrl || null,
+        categoryId: data.categoryId || existingPlace.categoryId
+      },
+      include: {
+        category: true,
+        reviews: {
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 3
+        }
+      }
+    });
     
     return NextResponse.json(updatedPlace, { headers: corsHeaders });
   } catch (error) {
@@ -137,7 +161,13 @@ export async function DELETE(
     const id = parseInt(idParam);
     
     // Check if place exists first
-    const existingPlace = await placesDB.getPlaceById(id);
+    const existingPlace = await prisma.place.findUnique({
+      where: { id },
+      include: {
+        category: true
+      }
+    });
+    
     if (!existingPlace) {
       console.log(`Place with ID ${id} not found for deletion`);
       return NextResponse.json(
@@ -146,16 +176,10 @@ export async function DELETE(
       );
     }
 
-    // Delete using the database
-    const success = await placesDB.deletePlace(id);
-    
-    if (!success) {
-      console.log(`Failed to delete place with ID ${id}`);
-      return NextResponse.json(
-        { error: 'Failed to delete place' },
-        { status: 500, headers: corsHeaders }
-      );
-    }
+    // Delete the place
+    await prisma.place.delete({
+      where: { id }
+    });
     
     return NextResponse.json({ 
       message: 'Place deleted successfully',
