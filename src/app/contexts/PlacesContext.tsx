@@ -2,7 +2,6 @@
 'use client'; // Mark as a Client Component
 import React, { createContext, useState, useContext, ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { Place } from '../types/place'; // Import the Place interface
-import { webSocketService } from '../services/websocket';
 
 interface PlacesContextType {
   places: Place[];
@@ -79,51 +78,6 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
         window.removeEventListener('offline', handleOffline);
       };
     }
-  }, []);
-
-  // WebSocket setup
-  useEffect(() => {
-    if (webSocketService) {
-      webSocketService.onMessage((data) => {
-        console.log('Received WebSocket message:', data);
-        
-        if (data.type === 'connected') {
-          console.log('WebSocket connection established');
-        }
-        else if (data.type === 'update') {
-          if (data.action === 'add') {
-            const newPlace = data.data;
-            setPlaces(currentPlaces => {
-              // Check if place already exists
-              if (currentPlaces.some(p => p.id === newPlace.id)) {
-                return currentPlaces;
-              }
-              return [...currentPlaces, newPlace];
-            });
-          } else if (data.action === 'refresh') {
-            const updatedPlace = data.data;
-            setPlaces(currentPlaces => 
-              currentPlaces.map(place => 
-                place.id === updatedPlace.id ? updatedPlace : place
-              )
-            );
-          } else if (data.action === 'delete') {
-            setPlaces(currentPlaces => 
-              currentPlaces.filter(place => place.id !== data.id)
-            );
-          }
-        }
-        else if (data.type === 'auto-refresh-status') {
-          console.log('Auto-refresh status update:', data.enabled);
-          setAutoRefreshEnabled(data.enabled);
-        }
-      });
-    }
-
-    // Cleanup WebSocket connection on unmount
-    return () => {
-      webSocketService?.close();
-    };
   }, []);
 
   // Load places from local storage on mount
@@ -246,15 +200,6 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
         }
         return [...prev, completePlace];
       });
-      
-      // Notify other clients through WebSocket
-      webSocketService?.send({ 
-        type: 'update', 
-        action: 'add', 
-        data: completePlace,
-        timestamp: Date.now()
-      });
-
       setError(null);
       return completePlace;
     } catch (err) {
@@ -302,15 +247,6 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
         
         // Update local state immediately
         setPlaces(prev => prev.map(p => p.id === id ? completePlace : p));
-        
-        // Notify other clients through WebSocket
-        webSocketService?.send({ 
-          type: 'update', 
-          action: 'refresh', // Use 'refresh' for auto-generated places to match server behavior
-          data: completePlace,
-          timestamp: Date.now()
-        });
-
         setError(null);
         return completePlace;
       } catch (error) {
@@ -318,18 +254,9 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
         if (error instanceof Error && !error.message.includes('404')) {
           throw error;
         }
-        // For 404 errors (auto-generated places), just update local state and broadcast
+        // For 404 errors (auto-generated places), just update local state
         const completePlace: Place = placeData;
         setPlaces(prev => prev.map(p => p.id === id ? completePlace : p));
-        
-        // Notify other clients through WebSocket
-        webSocketService?.send({ 
-          type: 'update', 
-          action: 'refresh',
-          data: completePlace,
-          timestamp: Date.now()
-        });
-
         setError(null);
         return completePlace;
       }
@@ -374,15 +301,6 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
         }
         // Otherwise, continue with the deletion process
       }
-      
-      // Notify other clients through WebSocket
-      webSocketService?.send({ 
-        type: 'update', 
-        action: 'delete', 
-        id,
-        timestamp: Date.now()
-      });
-      
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete place');
@@ -391,13 +309,32 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleAutoRefresh = useCallback(() => {
-    console.log('Toggling auto-refresh, current state:', autoRefreshEnabled);
-    webSocketService?.toggleAutoRefresh(!autoRefreshEnabled);
-  }, [autoRefreshEnabled]);
+    // No-op: WebSocket functionality removed
+    setAutoRefreshEnabled((prev) => !prev);
+  }, []);
 
   const getPlaceById = useCallback((id: number) => {
-    return places.find(p => p.id === id);
+    return places.find(place => place.id === id);
   }, [places]);
+
+  // Auto-refresh polling effect
+  useEffect(() => {
+    if (autoRefreshEnabled) {
+      const interval = setInterval(async () => {
+        // Randomly update the rating of a random place (if any)
+        if (places.length > 0) {
+          const randomIndex = Math.floor(Math.random() * places.length);
+          const randomPlace = places[randomIndex];
+          const newRating = Math.floor(Math.random() * 5) + 1;
+          if (randomPlace.rating !== newRating) {
+            await updatePlace(randomPlace.id, { ...randomPlace, rating: newRating });
+          }
+        }
+        fetchPlaces();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [autoRefreshEnabled, places, updatePlace]);
 
   const value = useMemo(() => ({
     places,
@@ -410,8 +347,8 @@ export function PlacesProvider({ children }: { children: ReactNode }) {
     uploadFile,
     autoRefreshEnabled,
     toggleAutoRefresh,
-    getPlaceById
-  }), [places, error, isOffline, pendingOperations, autoRefreshEnabled, toggleAutoRefresh, getPlaceById]);
+    getPlaceById,
+  }), [places, addPlace, updatePlace, deletePlace, error, isOffline, pendingOperations, uploadFile, autoRefreshEnabled, toggleAutoRefresh, getPlaceById]);
 
   return (
     <PlacesContext.Provider value={value}>

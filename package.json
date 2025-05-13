@@ -3,13 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"next dev\" \"node src/server.js\"",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "websocket": "node src/server.js",
     "db:init": "npx prisma migrate dev --name init && node scripts/init-db.js",
     "prisma:studio": "npx prisma studio",
     "prisma:generate": "npx prisma generate",
@@ -25,15 +24,13 @@
     "@faker-js/faker": "^8.4.1",
     "@prisma/client": "^5.9.1",
     "@types/chart.js": "^2.9.41",
-    "@types/ws": "^8.18.1",
     "chart.js": "^4.4.8",
     "concurrently": "^9.1.2",
     "next": "^15.2.4",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
     "react-dom": "^19.0.0",
-    "sqlite3": "^5.1.7",
-    "ws": "^8.18.1"
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.6.3",
