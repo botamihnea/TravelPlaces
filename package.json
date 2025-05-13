@@ -12,7 +12,9 @@
     "websocket": "node src/server.js",
     "db:init": "npx prisma migrate dev --name init && node scripts/init-db.js",
     "prisma:studio": "npx prisma studio",
-    "prisma:generate": "npx prisma generate"
+    "prisma:generate": "npx prisma generate",
+    "db:generate-test-data": "node scripts/generate-test-data.js",
+    "db:performance-test": "node scripts/run-performance-tests.js"
   },
   "dependencies": {
     "@angular/common": "^19.2.10",
@@ -20,6 +22,7 @@
     "@angular/forms": "^19.2.10",
     "@angular/platform-browser": "^19.2.10",
     "@angular/router": "^19.2.10",
+    "@faker-js/faker": "^8.4.1",
     "@prisma/client": "^5.9.1",
     "@types/chart.js": "^2.9.41",
     "@types/ws": "^8.18.1",
