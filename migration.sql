@@ -1,13 +1,10 @@
-// This is your Prisma schema file
-// Learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:../db/travel.db"
 }
 
 model Place {
@@ -22,11 +19,6 @@ model Place {
   categoryId  Int?
   category    Category? @relation(fields: [categoryId], references: [id])
   reviews     Review[]
-
-  @@index([rating])
-  @@index([categoryId])
-  @@index([name])
-  @@index([location])
 }
 
 model Category {
@@ -44,11 +36,18 @@ model Review {
   rating    Int
   author    String
   placeId   Int
-  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
- @@index([rating])
-  @@index([placeId])
-  @@index([createdAt])
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
 }
+
+model places {
+  id          Int     @id @default(autoincrement())
+  name        String
+  location    String
+  rating      Int
+  description String
+  videoUrl    String?
+}
+
+
