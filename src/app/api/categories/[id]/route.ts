@@ -30,7 +30,7 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 // GET single category
 export async function GET(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Record<string, string> }
 ) {
   try {
     const id = parseInt(context.params.id);
@@ -66,7 +66,7 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Record<string, string> }
 ) {
   try {
     const id = parseInt(context.params.id);
@@ -136,7 +136,7 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Record<string, string> }
 ) {
   try {
     const id = parseInt(context.params.id);
