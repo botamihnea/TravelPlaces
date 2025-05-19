@@ -68,9 +68,8 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const params = context.params;
   const idParam = params.id;
   
   try {
@@ -141,9 +140,8 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const params = context.params;
   const idParam = params.id;
   
   try {
