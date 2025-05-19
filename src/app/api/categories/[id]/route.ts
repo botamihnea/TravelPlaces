@@ -27,19 +27,13 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
   };
 }
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
 // GET single category
 export async function GET(
   request: Request,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const id = parseInt(params.id);
     
     // Check if we should include places
     const { searchParams } = new URL(request.url);
@@ -72,10 +66,10 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: Request,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const id = parseInt(params.id);
     
     // Check if category exists
     const existingCategory = await prisma.category.findUnique({
@@ -142,10 +136,10 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: Request,
-  context: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const id = parseInt(params.id);
     
     // Check if category exists and get related places
     const existingCategory = await prisma.category.findUnique({
