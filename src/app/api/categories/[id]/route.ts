@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
 // CORS headers
@@ -29,13 +29,11 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 
 // GET single category
 export async function GET(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
-  const idParam = params.id;
-  
   try {
-    const id = parseInt(idParam);
+    const id = parseInt(params.id);
     
     // Check if we should include places
     const { searchParams } = new URL(request.url);
@@ -67,13 +65,11 @@ export async function GET(
 
 // PUT (update) category
 export async function PUT(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
-  const idParam = params.id;
-  
   try {
-    const id = parseInt(idParam);
+    const id = parseInt(params.id);
     
     // Check if category exists
     const existingCategory = await prisma.category.findUnique({
@@ -139,13 +135,11 @@ export async function PUT(
 
 // DELETE category
 export async function DELETE(
-  request: NextRequest,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
-  const idParam = params.id;
-  
   try {
-    const id = parseInt(idParam);
+    const id = parseInt(params.id);
     
     // Check if category exists and get related places
     const existingCategory = await prisma.category.findUnique({
