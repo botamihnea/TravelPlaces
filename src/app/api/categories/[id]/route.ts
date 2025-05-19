@@ -30,9 +30,9 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 // GET single category
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const idParam = params.id;
+  const idParam = context.params.id;
   
   try {
     const id = parseInt(idParam);
@@ -68,9 +68,9 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const idParam = params.id;
+  const idParam = context.params.id;
   
   try {
     const id = parseInt(idParam);
@@ -140,9 +140,9 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
-  const idParam = params.id;
+  const idParam = context.params.id;
   
   try {
     const id = parseInt(idParam);
