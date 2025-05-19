@@ -30,9 +30,8 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 // GET single category
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
-  const params = context.params;
   const idParam = params.id;
   
   try {
