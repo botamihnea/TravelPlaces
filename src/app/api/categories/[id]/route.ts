@@ -30,17 +30,18 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 // GET single category
 export async function GET(
   request: NextRequest,
-  context: { params: Record<string, string> }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const { id } = context.params;
+    const categoryId = parseInt(id);
     
     // Check if we should include places
     const { searchParams } = new URL(request.url);
     const includePlaces = searchParams.get('includePlaces') !== 'false'; // Default to true
     
     const category = await prisma.category.findUnique({
-      where: { id },
+      where: { id: categoryId },
       include: {
         places: includePlaces ? true : false
       }
@@ -66,14 +67,15 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: NextRequest,
-  context: { params: Record<string, string> }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const { id } = context.params;
+    const categoryId = parseInt(id);
     
     // Check if category exists
     const existingCategory = await prisma.category.findUnique({
-      where: { id }
+      where: { id: categoryId }
     });
     
     if (!existingCategory) {
@@ -108,7 +110,7 @@ export async function PUT(
     }
 
     const updatedCategory = await prisma.category.update({
-      where: { id },
+      where: { id: categoryId },
       data: {
         name: data.name,
         icon: data.icon || existingCategory.icon
@@ -136,14 +138,15 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: NextRequest,
-  context: { params: Record<string, string> }
+  context: { params: { id: string } }
 ) {
   try {
-    const id = parseInt(context.params.id);
+    const { id } = context.params;
+    const categoryId = parseInt(id);
     
     // Check if category exists and get related places
     const existingCategory = await prisma.category.findUnique({
-      where: { id },
+      where: { id: categoryId },
       include: {
         places: true
       }
@@ -160,14 +163,14 @@ export async function DELETE(
     if (existingCategory.places.length > 0) {
       // Update places to remove category reference
       await prisma.place.updateMany({
-        where: { categoryId: id },
+        where: { categoryId },
         data: { categoryId: null }
       });
     }
 
     // Delete the category
     await prisma.category.delete({
-      where: { id }
+      where: { id: categoryId }
     });
     
     return NextResponse.json({ 
