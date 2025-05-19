@@ -27,16 +27,10 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
   };
 }
 
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
 // GET single category
 export async function GET(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const categoryId = parseInt(params.id);
@@ -72,7 +66,7 @@ export async function GET(
 // PUT (update) category
 export async function PUT(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const categoryId = parseInt(params.id);
@@ -142,7 +136,7 @@ export async function PUT(
 // DELETE category
 export async function DELETE(
   request: NextRequest,
-  { params }: RouteContext
+  { params }: { params: { id: string } }
 ) {
   try {
     const categoryId = parseInt(params.id);
