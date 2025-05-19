@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
 
 // CORS headers
@@ -29,10 +29,10 @@ function validateCategory(data: any): { isValid: boolean; errors: string[] } {
 
 // GET single category
 export async function GET(
-  request: Request,
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const idParam = context.params.id;
+  const idParam = params.id;
   
   try {
     const id = parseInt(idParam);
@@ -67,10 +67,10 @@ export async function GET(
 
 // PUT (update) category
 export async function PUT(
-  request: Request,
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const idParam = context.params.id;
+  const idParam = params.id;
   
   try {
     const id = parseInt(idParam);
@@ -139,10 +139,10 @@ export async function PUT(
 
 // DELETE category
 export async function DELETE(
-  request: Request,
-  context: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: { id: string } }
 ) {
-  const idParam = context.params.id;
+  const idParam = params.id;
   
   try {
     const id = parseInt(idParam);
